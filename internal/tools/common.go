@@ -19,6 +19,7 @@ package tools
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	api "skywalking.apache.org/repo/goapi/query"
@@ -28,8 +29,8 @@ import (
 const (
 	DefaultPageSize = 15
 	DefaultPageNum  = 1
-	DefaultStep     = "MINUTE"
 	DefaultDuration = 30 // minutes
+	nowKeyword      = "now"
 )
 
 // Error messages
@@ -37,6 +38,14 @@ const (
 	ErrMissingDuration = "missing required parameter: duration"
 	ErrMarshalFailed   = "failed to marshal result: %v"
 )
+
+// FinalizeURL ensures the URL ends with "/graphql".
+func FinalizeURL(urlStr string) string {
+	if !strings.HasSuffix(urlStr, "/graphql") {
+		urlStr = strings.TrimRight(urlStr, "/") + "/graphql"
+	}
+	return urlStr
+}
 
 // FormatTimeByStep formats time according to step granularity
 func FormatTimeByStep(t time.Time, step api.Step) string {
@@ -69,7 +78,8 @@ func ParseDuration(durationStr string, coldStage bool) api.Duration {
 			startTime = now
 			endTime = now.Add(duration)
 		}
-		step = determineStep(duration)
+		// Use adaptive step based on time range
+		step = determineAdaptiveStep(startTime, endTime)
 	} else {
 		startTime, endTime, step = parseLegacyDuration(durationStr)
 	}
@@ -104,12 +114,17 @@ func BuildPagination(pageNum, pageSize int) *api.Pagination {
 func BuildDuration(start, end, step string, cold bool, defaultDurationMinutes int) api.Duration {
 	if start != "" || end != "" {
 		stepEnum := api.Step(step)
+		// Parse and format start and end times
+		startTime, endTime := parseStartEndTimes(start, end)
+
+		// If step is not provided or invalid, determine it adaptively based on time range
 		if step == "" || !stepEnum.IsValid() {
-			stepEnum = DefaultStep
+			stepEnum = determineAdaptiveStep(startTime, endTime)
 		}
+
 		return api.Duration{
-			Start:     start,
-			End:       end,
+			Start:     FormatTimeByStep(startTime, stepEnum),
+			End:       FormatTimeByStep(endTime, stepEnum),
 			Step:      stepEnum,
 			ColdStage: &cold,
 		}
@@ -122,15 +137,17 @@ func BuildDuration(start, end, step string, cold bool, defaultDurationMinutes in
 	return ParseDuration(defaultDurationStr, cold)
 }
 
-// determineStep determines the step based on the duration
-func determineStep(duration time.Duration) api.Step {
-	if duration >= 24*time.Hour {
+// determineAdaptiveStep determines the adaptive step based on the time range
+func determineAdaptiveStep(startTime, endTime time.Time) api.Step {
+	duration := endTime.Sub(startTime)
+	if duration >= 7*24*time.Hour {
 		return api.StepDay
-	} else if duration >= time.Hour {
+	} else if duration >= 24*time.Hour {
 		return api.StepHour
-	} else if duration >= time.Minute {
+	} else if duration >= time.Hour {
 		return api.StepMinute
 	}
+
 	return api.StepSecond
 }
 
@@ -167,4 +184,60 @@ func parseLegacyDuration(durationStr string) (startTime, endTime time.Time, step
 	endTime = now
 	step = api.StepDay
 	return startTime, endTime, step
+}
+
+// parseAbsoluteTime tries to parse absolute time in various formats
+func parseAbsoluteTime(timeStr string) (time.Time, bool) {
+	timeFormats := []string{
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
+		"2006-01-02 1504",
+		"2006-01-02 15",
+		"2006-01-02 150405",
+		"2006-01-02",
+	}
+
+	for _, format := range timeFormats {
+		if parsed, err := time.Parse(format, timeStr); err == nil {
+			return parsed, true
+		}
+	}
+
+	return time.Time{}, false
+}
+
+// parseTimeString parses a time string (start or end)
+func parseTimeString(timeStr string, defaultTime time.Time) time.Time {
+	now := time.Now()
+
+	if timeStr == "" {
+		return defaultTime
+	}
+
+	if strings.EqualFold(timeStr, nowKeyword) {
+		return now
+	}
+
+	// Try relative time like "-30m", "-1h"
+	if duration, err := time.ParseDuration(timeStr); err == nil {
+		return now.Add(duration)
+	}
+
+	// Try absolute time
+	if parsed, ok := parseAbsoluteTime(timeStr); ok {
+		return parsed
+	}
+
+	return defaultTime
+}
+
+// parseStartEndTimes parses start and end time strings
+func parseStartEndTimes(start, end string) (startTime, endTime time.Time) {
+	now := time.Now()
+	defaultStart := now.Add(-30 * time.Minute) // Default to 30 minutes ago
+
+	startTime = parseTimeString(start, defaultStart)
+	endTime = parseTimeString(end, now)
+
+	return startTime, endTime
 }

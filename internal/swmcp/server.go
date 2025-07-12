@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
@@ -30,6 +29,8 @@ import (
 	"github.com/apache/skywalking-cli/pkg/contextkey"
 
 	"github.com/apache/skywalking-mcp/internal/config"
+	"github.com/apache/skywalking-mcp/internal/prompts"
+	"github.com/apache/skywalking-mcp/internal/resources"
 	"github.com/apache/skywalking-mcp/internal/tools"
 )
 
@@ -40,11 +41,20 @@ func newMcpServer() *server.MCPServer {
 		"skywalking-mcp",
 		"0.1.0",
 		server.WithResourceCapabilities(true, true),
+		server.WithPromptCapabilities(true),
 		server.WithLogging())
 
+	// add tools and capabilities to the MCP server
 	tools.AddTraceTools(mcpServer)
 	tools.AddMetricsTools(mcpServer)
 	tools.AddLogTools(mcpServer)
+	tools.AddMQETools(mcpServer)
+
+	// add MQE documentation resources
+	resources.AddMQEResources(mcpServer)
+
+	// add prompts for guided interactions
+	prompts.AddSkyWalkingPrompts(mcpServer)
 
 	return mcpServer
 }
@@ -79,21 +89,13 @@ const (
 	skywalkingURLEnvVar = "SW_URL"
 )
 
-// finalizeURL ensures the URL ends with "/graphql".
-func finalizeURL(urlStr string) string {
-	if !strings.HasSuffix(urlStr, "/graphql") {
-		urlStr = strings.TrimRight(urlStr, "/") + "/graphql"
-	}
-	return urlStr
-}
-
 // urlAndInsecureFromEnv extracts URL and insecure flag purely from environment variables.
 func urlAndInsecureFromEnv() (string, bool) {
 	urlStr := os.Getenv(skywalkingURLEnvVar)
 	if urlStr == "" {
 		urlStr = config.DefaultSWURL
 	}
-	return finalizeURL(urlStr), false
+	return tools.FinalizeURL(urlStr), false
 }
 
 // urlAndInsecureFromHeaders extracts URL and insecure flag for a request.
@@ -108,7 +110,7 @@ func urlAndInsecureFromHeaders(req *http.Request) (string, bool) {
 		}
 	}
 
-	return finalizeURL(urlStr), false
+	return tools.FinalizeURL(urlStr), false
 }
 
 // WithSkyWalkingContextFromEnv injects the SkyWalking URL and insecure
