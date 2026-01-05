@@ -65,7 +65,7 @@ func FormatTimeByStep(t time.Time, step api.Step) string {
 
 // ParseDuration converts duration string to api.Duration
 func ParseDuration(durationStr string, coldStage bool) api.Duration {
-	now := time.Now()
+	now := time.Now().In(time.Local)
 	var startTime, endTime time.Time
 	var step api.Step
 
@@ -161,7 +161,7 @@ func determineAdaptiveStep(startTime, endTime time.Time) api.Step {
 
 // parseLegacyDuration parses legacy duration strings like "7d", "24h"
 func parseLegacyDuration(durationStr string) (startTime, endTime time.Time, step api.Step) {
-	now := time.Now()
+	now := time.Now().In(time.Local)
 	if len(durationStr) > 1 && (durationStr[len(durationStr)-1] == 'd' || durationStr[len(durationStr)-1] == 'D') {
 		var days int
 		if _, parseErr := fmt.Sscanf(durationStr[:len(durationStr)-1], "%d", &days); parseErr == nil && days > 0 {
@@ -216,7 +216,7 @@ func parseAbsoluteTime(timeStr string) (time.Time, bool) {
 
 // parseTimeString parses a time string (start or end)
 func parseTimeString(timeStr string, defaultTime time.Time) time.Time {
-	now := time.Now()
+	now := time.Now().In(time.Local)
 
 	if timeStr == "" {
 		return defaultTime
@@ -241,7 +241,7 @@ func parseTimeString(timeStr string, defaultTime time.Time) time.Time {
 
 // parseStartEndTimes parses start and end time strings
 func parseStartEndTimes(start, end string) (startTime, endTime time.Time) {
-	now := time.Now()
+	now := time.Now().In(time.Local)
 	defaultStart := now.Add(-30 * time.Minute) // Default to 30 minutes ago
 
 	startTime = parseTimeString(start, defaultStart)

@@ -147,9 +147,9 @@ func queryTopology(ctx context.Context, req *TopologyRequest, topologyType strin
 						id
 						source
 						target
-						isDetectPoint
-						type
-						component
+						sourceComponents
+						targetComponents
+						detectPoints
 					}
 				}
 			}
@@ -176,8 +176,6 @@ func queryTopology(ctx context.Context, req *TopologyRequest, topologyType strin
 						id
 						source
 						target
-						type
-						component
 					}
 				}
 			}
@@ -204,8 +202,6 @@ func queryTopology(ctx context.Context, req *TopologyRequest, topologyType strin
 						id
 						source
 						target
-						type
-						component
 					}
 				}
 			}

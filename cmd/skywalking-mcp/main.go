@@ -25,6 +25,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -61,6 +62,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("read-only", false, "Restrict the server to read-only operations")
 	rootCmd.PersistentFlags().Bool("log-command", false, "When true, log commands to the log file")
 	rootCmd.PersistentFlags().String("log-file", "", "Path to log file")
+	rootCmd.PersistentFlags().String("timezone", "", "Timezone for time calculations (e.g. Asia/Shanghai, UTC, America/New_York). Defaults to local system timezone")
 
 	// Bind flag to viper
 	_ = viper.BindPFlag("url", rootCmd.PersistentFlags().Lookup("sw-url"))
@@ -68,6 +70,7 @@ func init() {
 	_ = viper.BindPFlag("read-only", rootCmd.PersistentFlags().Lookup("read-only"))
 	_ = viper.BindPFlag("log-command", rootCmd.PersistentFlags().Lookup("log-command"))
 	_ = viper.BindPFlag("log-file", rootCmd.PersistentFlags().Lookup("log-file"))
+	_ = viper.BindPFlag("timezone", rootCmd.PersistentFlags().Lookup("timezone"))
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: parseLogLevel(viper.GetString("log-level")),
@@ -75,6 +78,9 @@ func init() {
 
 	_, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// Initialize global timezone
+	initTimezone()
 
 	// Add subcommands
 	rootCmd.AddCommand(swmcp.NewStdioServer())
@@ -86,6 +92,19 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+}
+
+func initTimezone() {
+	tz := viper.GetString("timezone")
+	if tz != "" {
+		loc, err := time.LoadLocation(tz)
+		if err != nil {
+			slog.Default().Warn("Failed to load timezone", "timezone", tz, "error", err)
+			return
+		}
+		time.Local = loc
+		slog.Default().Info("Using configured timezone", "timezone", tz, "location", loc)
 	}
 }
 
