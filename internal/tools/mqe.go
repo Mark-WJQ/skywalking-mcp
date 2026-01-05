@@ -34,24 +34,10 @@ import (
 )
 
 // AddMQETools registers MQE-related tools with the MCP server
-func AddMQETools(mcp *server.MCPServer) {
-	MQEExpressionTool.Register(mcp)
-	MQEMetricsListTool.Register(mcp)
-	MQEMetricsTypeTool.Register(mcp)
-}
-
-// GraphQLRequest represents a GraphQL request
-type GraphQLRequest struct {
-	Query     string                 `json:"query"`
-	Variables map[string]interface{} `json:"variables,omitempty"`
-}
-
-// GraphQLResponse represents a GraphQL response
-type GraphQLResponse struct {
-	Data   interface{} `json:"data"`
-	Errors []struct {
-		Message string `json:"message"`
-	} `json:"errors,omitempty"`
+func AddMQETools(srv *server.MCPServer) {
+	MQEExpressionTool.Register(srv)
+	MQEMetricsListTool.Register(srv)
+	MQEMetricsTypeTool.Register(srv)
 }
 
 // executeGraphQL executes a GraphQL query against SkyWalking OAP

@@ -38,9 +38,26 @@ RUN CGO_ENABLED=0 go build \
 
 # Make a stage to run the app
 FROM debian:bullseye-slim
+# 1. 首先临时使用HTTP协议（避免证书问题）
+RUN sed -i 's|https://|http://|g' /etc/apt/sources.list
 
-# Install ca-certificates for HTTPS requests
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+# 2. 确保使用国内镜像源（示例使用阿里云）
+RUN sed -i 's|http://deb.debian.org|http://mirrors.aliyun.com|g' /etc/apt/sources.list && \
+    sed -i 's|http://security.debian.org|http://mirrors.aliyun.com/debian-security|g' /etc/apt/sources.list
+
+# 3. 更新并安装必要组件（分步执行）
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        apt-transport-https \
+        gnupg2 \
+        ca-certificates
+
+# 4. 恢复HTTPS源（现在已有证书支持HTTPS）
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list && \
+    apt-get update
+
+# 5. 清理缓存
+RUN rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
 RUN useradd -r -u 1000 -m skywalking-mcp
