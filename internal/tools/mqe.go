@@ -345,6 +345,13 @@ func executeMQEExpression(ctx context.Context, req *MQEExpressionRequest) (*mcp.
 		"dumpDBRsp": req.DumpDBRsp,
 	}
 
+	// Add coldStage to duration if present in the api.Duration
+	if duration.ColdStage != nil && *duration.ColdStage {
+		if durationMap, ok := variables["duration"].(map[string]interface{}); ok {
+			durationMap["coldStage"] = true
+		}
+	}
+
 	result, err := executeGraphQL(ctx, viper.GetString("url"), query, variables)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to execute MQE expression: %v", err)), nil

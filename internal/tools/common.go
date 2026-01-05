@@ -88,12 +88,16 @@ func ParseDuration(durationStr string, coldStage bool) api.Duration {
 		step = api.StepMinute
 	}
 
-	return api.Duration{
-		Start:     FormatTimeByStep(startTime, step),
-		End:       FormatTimeByStep(endTime, step),
-		Step:      step,
-		ColdStage: &coldStage,
+	result := api.Duration{
+		Start: FormatTimeByStep(startTime, step),
+		End:   FormatTimeByStep(endTime, step),
+		Step:  step,
 	}
+	// Only set ColdStage if explicitly true
+	if coldStage {
+		result.ColdStage = &coldStage
+	}
+	return result
 }
 
 // BuildPagination creates pagination with defaults
@@ -122,12 +126,16 @@ func BuildDuration(start, end, step string, cold bool, defaultDurationMinutes in
 			stepEnum = determineAdaptiveStep(startTime, endTime)
 		}
 
-		return api.Duration{
-			Start:     FormatTimeByStep(startTime, stepEnum),
-			End:       FormatTimeByStep(endTime, stepEnum),
-			Step:      stepEnum,
-			ColdStage: &cold,
+		result := api.Duration{
+			Start: FormatTimeByStep(startTime, stepEnum),
+			End:   FormatTimeByStep(endTime, stepEnum),
+			Step:  stepEnum,
 		}
+		// Only set ColdStage if explicitly true
+		if cold {
+			result.ColdStage = &cold
+		}
+		return result
 	}
 
 	if defaultDurationMinutes <= 0 {

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(go build:*)",
+      "Bash(go run -modfile= go.mod)",
+      "Bash(go list:*)",
+      "Bash(git add:*)",
+      "Bash(defined for input object type 'Duration'\"\n\nThe coldStage field is only supported for BanyanDB storage backend and\nshould be omitted for other storage backends or when set to false/nil.\nEOF\n)\")"
+    ]
+  }
+}
